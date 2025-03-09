@@ -10,7 +10,9 @@ data = []
 HTML_TEMPLATE = """
 <!doctype html>
 <html>
-<head><title>Expense Tracker</title></head>
+<head>
+    <title>Expense Tracker</title>
+</head>
 <body>
     <h2>Record an Expense</h2>
     <form action="/add" method="post">
@@ -34,34 +36,38 @@ def home():
 
 @app.route('/add', methods=['POST'])
 def add_expense():
-    entry = {
-        'Date': request.form['date'],
-        'Category': request.form['category'],
-        'Description': request.form['description'],
-        'Amount': float(request.form['amount'])
-    }
-    data.append(entry)
-    return "Expense added! <a href='/'>Go back</a>"
+    try:
+        entry = {
+            'Date': request.form['date'],
+            'Category': request.form['category'].strip(),
+            'Description': request.form['description'].strip(),
+            'Amount': float(request.form['amount'])
+        }
+        data.append(entry)
+        return "Expense added! <a href='/'>Go back</a>"
+    except Exception as e:
+        return f"Error: {e} <a href='/'>Go back</a>"
 
 @app.route('/download')
 def download():
     if not data:
         return "No expenses recorded yet. <a href='/'>Go back</a>"
-    
+
     df = pd.DataFrame(data)
     file_path = "expenses.xlsx"
+
     with pd.ExcelWriter(file_path, engine='xlsxwriter') as writer:
         df.to_excel(writer, sheet_name='All Expenses', index=False)
         
         for category in df['Category'].unique():
             category_df = df[df['Category'] == category]
             category_df.to_excel(writer, sheet_name=category, index=False)
-            
+
             worksheet = writer.sheets[category]
-            worksheet.write(len(category_df) + 2, 0, 'Total Spent:')
-            worksheet.write(len(category_df) + 2, 1, category_df['Amount'].sum())
-    
+            worksheet.write(len(category_df) + 1, 0, 'Total Spent:')
+            worksheet.write(len(category_df) + 1, 1, category_df['Amount'].sum())
+
     return send_file(file_path, as_attachment=True)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)
