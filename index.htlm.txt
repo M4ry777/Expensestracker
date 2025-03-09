@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <h2>Expense Tracker</h2>
+    <form id="expenseForm">
+        Date: <input type="date" id="date" required><br>
+        Category: <input type="text" id="category" required><br>
+        Description: <input type="text" id="description" required><br>
+        Amount: <input type="number" id="amount" step="0.01" required><br>
+        <button type="submit">Add Expense</button>
+    </form>
+    
+    <h3>Expenses</h3>
+    <table border="1" id="expenseTable">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th>Amount (€)</th>
+                <th>Delete</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    
+    <button onclick="downloadExcel()">Download Excel</button>
+
+    <script>
+        let expenses = JSON.parse(localStorage.getItem("expenses")) || [];
+
+        document.getElementById("expenseForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            
+            let date = document.getElementById("date").value;
+            let category = document.getElementById("category").value.trim();
+            let description = document.getElementById("description").value.trim();
+            let amount = parseFloat(document.getElementById("amount").value);
+            
+            if (!date || !category || !description || isNaN(amount) || amount <= 0) {
+                alert("Please enter valid details!");
+                return;
+            }
+
+            let expense = { date, category, description, amount };
+            expenses.push(expense);
+            localStorage.setItem("expenses", JSON.stringify(expenses));
+            updateTable();
+        });
+
+        function updateTable() {
+            let tableBody = document.querySelector("#expenseTable tbody");
+            tableBody.innerHTML = "";
+            expenses.forEach((expense, index) => {
+                let row = tableBody.insertRow();
+                row.insertCell(0).innerText = expense.date;
+                row.insertCell(1).innerText = expense.category;
+                row.insertCell(2).innerText = expense.description;
+                row.insertCell(3).innerText = expense.amount.toFixed(2);
+                
+                let deleteCell = row.insertCell(4);
+                let deleteButton = document.createElement("button");
+                deleteButton.innerText = "❌";
+                deleteButton.onclick = () => {
+                    expenses.splice(index, 1);
+                    localStorage.setItem("expenses", JSON.stringify(expenses));
+                    updateTable();
+                };
+                deleteCell.appendChild(deleteButton);
+            });
+        }
+
+        function downloadExcel() {
+            if (expenses.length === 0) {
+                alert("No expenses to export!");
+                return;
+            }
+
+            let workbook = XLSX.utils.book_new();
+            
+            // Create the "All Expenses" sheet
+            let wsData = [["Date", "Category", "Description", "Amount (€)"]];
+            expenses.forEach(exp => wsData.push([exp.date, exp.category, exp.description, exp.amount]));
+            let ws = XLSX.utils.aoa_to_sheet(wsData);
+            XLSX.utils.book_append_sheet(workbook, ws, "All Expenses");
+
+            // Create separate sheets for each category
+            let categories = [...new Set(expenses.map(exp => exp.category))];
+            categories.forEach(category => {
+                let filteredData = expenses.filter(exp => exp.category === category);
+                let catSheetData = [["Date", "Description", "Amount (€)"]];
+                filteredData.forEach(exp => catSheetData.push([exp.date, exp.description, exp.amount]));
+                
+                let total = filteredData.reduce((sum, exp) => sum + exp.amount, 0);
+                catSheetData.push(["", "Total Spent (€)", total.toFixed(2)]);
+
+                let wsCat = XLSX.utils.aoa_to_sheet(catSheetData);
+                XLSX.utils.book_append_sheet(workbook, wsCat, category);
+            });
+
+            XLSX.writeFile(workbook, "expenses.xlsx");
+        }
+
+        // Load existing data on page load
+        updateTable();
+    </script>
+</body>
+</html>
