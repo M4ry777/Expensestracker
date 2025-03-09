@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Expense Tracker</title>
+  <!-- Import SheetJS for Excel export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #fdf6e3;
+      text-align: center;
+      padding: 20px;
+    }
+    h2 {
+      color: #ff9f1c;
+    }
+    form {
+      background: #ffebd6;
+      padding: 15px;
+      border-radius: 10px;
+      display: inline-block;
+      text-align: left;
+      margin-bottom: 15px;
+    }
+    input, select, button {
+      margin: 5px 0;
+      padding: 8px;
+      border-radius: 5px;
+      border: 1px solid #ff9f1c;
+    }
+    button {
+      background-color: #ff9f1c;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #ff6f00;
+    }
+    table {
+      width: 100%;
+      margin-top: 20px;
+      border-collapse: collapse;
+      background: white;
+    }
+    th, td {
+      border: 1px solid #ff9f1c;
+      padding: 10px;
+    }
+    th {
+      background: #ffebd6;
+    }
+    .header-img {
+      width: 100px;
+      display: block;
+      margin: 0 auto 20px;
+    }
+  </style>
+</head>
+<body>
+  <img
+    src="https://cdn-icons-png.flaticon.com/512/1040/1040239.png"
+    class="header-img"
+    alt="Cute Expense Tracker"
+  />
+  <h2>Expense Tracker</h2>
+
+  <!-- FORM FOR ADDING EXPENSES -->
+  <form id="expenseForm">
+    <!-- The month user wants to label this expense under (used for 25–24 logic) -->
+    Month:
+    <select id="month" required>
+      <option value="01">January</option>
+      <option value="02">February</option>
+      <option value="03">March</option>
+      <option value="04">April</option>
+      <option value="05">May</option>
+      <option value="06">June</option>
+      <option value="07">July</option>
+      <option value="08">August</option>
+      <option value="09">September</option>
+      <option value="10">October</option>
+      <option value="11">November</option>
+      <option value="12">December</option>
+    </select>
+    <br />
+    Date: <input type="date" id="date" required /><br />
+    Category:
+    <select id="category" required>
+      <option value="Shopping">🛍️ Shopping</option>
+      <option value="Eating out">🍽️ Eating out</option>
+      <option value="Food">🍎 Food</option>
+      <option value="Health">🏥 Health</option>
+      <option value="Car">🚗 Car</option>
+      <option value="Clothes">👗 Clothes</option>
+      <option value="Extra">✨ Extra</option>
+      <option value="Gift">🎁 Gift</option>
+      <option value="Stuff and hobbies">🎨 Stuff & Hobbies</option>
+      <option value="Holidays">🏝️ Holidays</option>
+      <option value="Transport">🚌 Transport</option>
+      <option value="Bills">📑 Bills</option>
+      <option value="Genmab"> Genmab</option>
+    </select>
+    <br />
+    Description: <input type="text" id="description" />
+    <br />
+    Amount: <input type="number" id="amount" step="0.01" required />
+    <br />
+    <button type="submit">Add Expense</button>
+  </form>
+
+  <!-- BUTTON + TABLE FOR DISPLAYING EXPENSES -->
+  <h3>Expenses</h3>
+  <button onclick="deleteAllExpenses()">Delete All</button>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Category</th>
+        <th>Description</th>
+        <th>Amount (€)</th>
+        <th>Delete</th>
+      </tr>
+    </thead>
+    <tbody id="expenseTable"></tbody>
+  </table>
+
+  <!-- BUTTON TO DOWNLOAD EXCEL -->
+  <button onclick="downloadExcel()">Download Excel</button>
+
+  <script>
+    // Store all expenses in localStorage to persist
+    let expenses = JSON.parse(localStorage.getItem("expenses")) || [];
+
+    // Add a new expense
+    document.getElementById("expenseForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      let month = document.getElementById("month").value;
+      let date = document.getElementById("date").value;
+      let category = document.getElementById("category").value;
+      let description = document.getElementById("description").value.trim();
+      let amount = parseFloat(document.getElementById("amount").value);
+
+      if (!date || !category || isNaN(amount) || amount <= 0) {
+        alert("Please enter valid details!");
+        return;
+      }
+
+      // Build expense object
+      let expense = {
+        month,
+        date, // 'YYYY-MM-DD'
+        category,
+        description: description || "",
+        amount,
+      };
+
+      // Push to array + localStorage
+      expenses.push(expense);
+      localStorage.setItem("expenses", JSON.stringify(expenses));
+
+      // Update the table
+      updateTable();
+    });
+
+    // Draw the expense table
+    function updateTable() {
+      let tableBody = document.getElementById("expenseTable");
+      tableBody.innerHTML = "";
+
+      expenses.forEach((exp, index) => {
+        let row = tableBody.insertRow();
+
+        row.insertCell(0).innerText = exp.date;
+        row.insertCell(1).innerText = exp.category;
+        row.insertCell(2).innerText = exp.description;
+        row.insertCell(3).innerText = exp.amount.toFixed(2);
+
+        // Delete button
+        let deleteCell = row.insertCell(4);
+        let deleteButton = document.createElement("button");
+        deleteButton.innerText = "❌";
+        deleteButton.onclick = () => {
+          expenses.splice(index, 1);
+          localStorage.setItem("expenses", JSON.stringify(expenses));
+          updateTable();
+        };
+        deleteCell.appendChild(deleteButton);
+      });
+    }
+
+    // Delete all expenses
+    function deleteAllExpenses() {
+      if (confirm("Are you sure you want to delete all expenses?")) {
+        expenses = [];
+        localStorage.removeItem("expenses");
+        updateTable();
+      }
+    }
+
+    // For the 25–24 filter
+    // If user selects month X, we consider: 25 (X-1) to 24 (X).
+    // Special case for January = from Dec 25 (previous year) to Jan 24 (current year).
+    function getMonthRange(selectedMonth) {
+      // We'll always use the current year
+      // If user picks '03', that means from (year,2,25) => 25 Feb to (year,3,24) => 24 Mar
+      let year = new Date().getFullYear();
+      let monthNum = parseInt(selectedMonth, 10);
+
+      // If user picks '01' => january => from last year's Dec 25 => this year's Jan 24
+      if (monthNum === 1) {
+        return {
+          start: new Date(year - 1, 11, 25), // Dec 25 of previous year
+          end: new Date(year, 0, 24),       // Jan 24 of current year
+        };
+      } else {
+        // For e.g. '03' => from year,(3-1)-1,25 => year,1,25 => 25 Feb
+        // end => year,(3-1),24 => year,2,24 => 24 Mar
+        return {
+          start: new Date(year, monthNum - 2, 25),
+          end: new Date(year, monthNum - 1, 24),
+        };
+      }
+    }
+
+    // Download Excel with 25–24 logic + per-category sheets
+    function downloadExcel() {
+      if (expenses.length === 0) {
+        alert("No expenses to export!");
+        return;
+      }
+
+      let selectedMonth = document.getElementById("month").value;
+      let { start, end } = getMonthRange(selectedMonth);
+
+      // Filter for expenses whose `date` is in [start, end]
+      let filtered = expenses.filter((exp) => {
+        let d = new Date(exp.date);
+        return d >= start && d <= end;
+      });
+
+      if (filtered.length === 0) {
+        alert("No expenses in that month range!");
+        return;
+      }
+
+      // Build the workbook
+      let workbook = XLSX.utils.book_new();
+
+      // Main sheet: "All Expenses"
+      let allData = [["Date", "Category", "Description", "Amount (€)"]];
+      filtered.forEach((exp) => {
+        allData.push([exp.date, exp.category, exp.description, exp.amount]);
+      });
+      let total = filtered.reduce((sum, e) => sum + e.amount, 0);
+      allData.push(["", "Total Expenses (€)", "", total.toFixed(2)]);
+
+      let wsAll = XLSX.utils.aoa_to_sheet(allData);
+      XLSX.utils.book_append_sheet(workbook, wsAll, "All Expenses");
+
+      // Separate sheets by category
+      let categories = [...new Set(filtered.map((e) => e.category))];
+      categories.forEach((cat) => {
+        let catRows = [["Date", "Description", "Amount (€)"]];
+        let catExpenses = filtered.filter((e) => e.category === cat);
+        catExpenses.forEach((e) => {
+          catRows.push([e.date, e.description, e.amount]);
+        });
+        let catTotal = catExpenses.reduce((sum, e) => sum + e.amount, 0);
+        catRows.push(["", "Total Spent (€)", catTotal.toFixed(2)]);
+
+        let wsCat = XLSX.utils.aoa_to_sheet(catRows);
+        XLSX.utils.book_append_sheet(workbook, wsCat, cat);
+      });
+
+      // Save the file
+      XLSX.writeFile(workbook, `expenses_${selectedMonth}.xlsx`);
+    }
+
+    // Initial load of table
+    updateTable();
+  </script>
+</body>
+</html>
